@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import type { DataPoint } from '@/lib/types';
 import DataProvider, { useDashboard } from '@/components/providers/DataProvider';
 import { ChartCard } from '@/components/charts/ChartCard';
@@ -8,6 +8,7 @@ import { FilterPanel } from '@/components/controls/FilterPanel';
 import { TimeRangeSelector } from '@/components/controls/TimeRangeSelector';
 import { DataTable } from '@/components/ui/DataTable';
 import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor';
+import { CommandPalette } from '@/components/ui/CommandPalette';
 
 const StatusPill = memo(function StatusPill() {
   const { config } = useDashboard();
@@ -19,6 +20,33 @@ const StatusPill = memo(function StatusPill() {
 });
 
 function Shell() {
+  const { config, setConfig } = useDashboard();
+  const [palette, setPalette] = useState(false);
+
+  // Global shortcuts: Ctrl/⌘+K palette, Space pause, 1–4 chart switch.
+  // Ignored while typing in inputs so forms keep working.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPalette((p) => !p);
+        return;
+      }
+      if (typing) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setConfig({ paused: !config.paused });
+      } else if (e.key >= '1' && e.key <= '4') {
+        const charts = ['line', 'bar', 'scatter', 'heatmap'] as const;
+        setConfig({ chart: charts[Number(e.key) - 1] });
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [config.paused, setConfig]);
+
   return (
     <div className="page">
       <header className="topbar">
@@ -62,8 +90,11 @@ function Shell() {
 
       <footer className="footer">
         <span>NEXT.JS 14 APP ROUTER · TYPESCRIPT · CANVAS + SVG · RING BUFFER + WORKER</span>
-        <span>SERVER DATA → CLIENT STREAM · `npm install &amp;&amp; npm run dev`</span>
+        <span>
+          <kbd>Ctrl K</kbd> commands · <kbd>Space</kbd> pause · <kbd>1–4</kbd> charts
+        </span>
       </footer>
+      <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </div>
   );
 }

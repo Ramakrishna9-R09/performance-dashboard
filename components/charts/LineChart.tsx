@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { useDashboard } from '@/components/providers/DataProvider';
 import { useChartRenderer } from '@/hooks/useChartRenderer';
-import { drawGrid } from '@/lib/canvasUtils';
+import { drawGrid, formatTime } from '@/lib/canvasUtils';
 import { AGG_BUCKET_MS } from '@/lib/types';
 import type { Domain } from '@/hooks/useViewDomain';
 
@@ -29,6 +29,10 @@ export const LineChart = memo(function LineChart({ domain }: { domain: Domain })
     sum: new Float64Array(MAX_COLS),
     cnt: new Uint16Array(MAX_COLS),
   });
+  // Hover crosshair state lives in a ref + direct DOM writes: zero React
+  // re-renders while the pointer moves at 60Hz.
+  const hoverRef = useRef({ x: 0, active: false });
+  const tipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -47,11 +51,16 @@ export const LineChart = memo(function LineChart({ domain }: { domain: Domain })
       canvas.setPointerCapture(e.pointerId);
     };
     const onMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      hoverRef.current.x = e.clientX - rect.left;
+      hoverRef.current.active = true;
       if (!dragging) return;
       const dx = e.clientX - lastX;
       lastX = e.clientX;
-      const rect = canvas.getBoundingClientRect();
       setOff((o) => Math.min(1, Math.max(0, o - dx / Math.max(1, rect.width) / viewRef.current.frac)));
+    };
+    const onLeave = () => {
+      hoverRef.current.active = false;
     };
     const onUp = () => {
       dragging = false;
@@ -65,12 +74,14 @@ export const LineChart = memo(function LineChart({ domain }: { domain: Domain })
     canvas.addEventListener('pointerdown', onDown);
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointerleave', onLeave);
     canvas.addEventListener('dblclick', onDbl);
     return () => {
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
+      canvas.removeEventListener('pointerleave', onLeave);
       canvas.removeEventListener('dblclick', onDbl);
     };
   }, []);
@@ -172,12 +183,54 @@ export const LineChart = memo(function LineChart({ domain }: { domain: Domain })
     ctx.stroke();
     ctx.shadowBlur = 0;
 
+    // Hover crosshair: vertical guide + value dot + floating readout.
+    const hov = hoverRef.current;
+    const tip = tipRef.current;
+    if (started && hov.active && hov.x >= PAD.l && hov.x <= w - PAD.r && tip) {
+      const col = Math.min(cols - 1, Math.max(0, Math.floor(((hov.x - PAD.l) / plotW) * cols)));
+      if (buf.cnt[col]) {
+        const avg = buf.sum[col] / buf.cnt[col];
+        const cx = xOf(col);
+        const cy = yOf(avg);
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx, PAD.t);
+        ctx.lineTo(cx, PAD.t + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#d3ff53';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0b0e12';
+        ctx.stroke();
+        const li = startL + Math.min(win - 1, Math.floor(((col + 0.5) / cols) * win));
+        const tp = store.times[store.at(li)] ?? 0;
+        tip.style.display = 'block';
+        tip.style.left = `${cx}px`;
+        tip.style.top = `${cy}px`;
+        tip.innerHTML = `<b>${avg.toFixed(2)}</b><small>${formatTime(tp)}</small>`;
+      } else {
+        tip.style.display = 'none';
+      }
+    } else if (tip) {
+      tip.style.display = 'none';
+    }
+
     const ms = performance.now() - t0;
     store.perf.lastRenderMs = ms;
     return ms;
   });
 
-  return <canvas ref={canvasRef} role="img" aria-label="Line chart" />;
+  return (
+    <>
+      <canvas ref={canvasRef} role="img" aria-label="Line chart. Hover for values." />
+      <div ref={tipRef} className="crosshair-tip" aria-hidden="true" />
+    </>
+  );
 });
 
 export default LineChart;

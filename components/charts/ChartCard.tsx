@@ -59,7 +59,7 @@ export const ChartCard = memo(function ChartCard() {
         {config.chart === 'bar' && <BarChart domain={domain} />}
         {config.chart === 'scatter' && <ScatterPlot domain={domain} />}
         {config.chart === 'heatmap' && <Heatmap />}
-        <AxisOverlay domain={domain} />
+        <AxisOverlay domain={domain} showValues={config.chart !== 'heatmap'} />
       </div>
       {config.chart === 'line' && (
         <p className="zoom-hint">scroll to zoom · drag to pan · double-click resets view</p>

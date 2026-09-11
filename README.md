@@ -25,13 +25,13 @@ npm run typecheck
 
 ## Screenshots
 
-Capture from the production build (`npm run build && npm start`, 1440px viewport):
+Captured headless (Chrome, 1440px) from the production build — real stream, real numbers:
 
-| File | Capture |
-|---|---|
-| `docs/shot-overview.png` | Full `/dashboard` at 10k, line chart, HUD green |
-| `docs/shot-stress.png` | After **⚡ Stress 100k**, heatmap active, FPS holding |
-| `docs/shot-palette.png` | `Ctrl+K` palette open over the dashboard |
+![Overview — 10k points, line chart, live HUD](docs/shot-overview.png)
+
+![Stress — 100k points, heatmap density, table virtualized to 29 rows](docs/shot-stress.png)
+
+![Command palette — Ctrl+K over the live dashboard](docs/shot-palette.png)
 
 > Live reference (always current): `https://performance-dashboard-beta-ruby.vercel.app/dashboard`
 

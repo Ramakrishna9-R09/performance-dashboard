@@ -6,13 +6,15 @@ import type { Domain } from '@/hooks/useViewDomain';
 
 interface Props {
   domain: Domain;
+  /** Heatmaps carry their own row labels — hide value ticks to avoid clash. */
+  showValues?: boolean;
 }
 
 /**
  * SVG chrome over canvas data: crisp value + time labels that scale with
  * the container via a measured viewBox (no blurry preserveAspectRatio text).
  */
-export const AxisOverlay = memo(function AxisOverlay({ domain }: Props) {
+export const AxisOverlay = memo(function AxisOverlay({ domain, showValues = true }: Props) {
   const [size, setSize] = useState({ w: 800, h: 340 });
 
   useEffect(() => {
@@ -36,11 +38,12 @@ export const AxisOverlay = memo(function AxisOverlay({ domain }: Props) {
 
   return (
     <svg className="axes" viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-      {ticks.map((t) => (
-        <text key={t} x={4} y={yOf(t) + 3} fontSize="9.5" fill="#8b93a7" fontFamily="ui-monospace,monospace">
-          {formatCompact(t)}
-        </text>
-      ))}
+      {showValues &&
+        ticks.map((t) => (
+          <text key={t} x={4} y={yOf(t) + 3} fontSize="9.5" fill="#8b93a7" fontFamily="ui-monospace,monospace">
+            {formatCompact(t)}
+          </text>
+        ))}
       {[0, 0.33, 0.66, 1].map((f) => {
         const t = domain.t0 + (domain.t1 - domain.t0) * f;
         const x = padL + f * (w - padL - padR);

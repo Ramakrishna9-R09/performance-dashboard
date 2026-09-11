@@ -15,7 +15,7 @@ const COLS = 28;
 export const Heatmap = memo(function Heatmap() {
   const { store, config } = useDashboard();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const gridRef = useRef({ cells: new Float32Array(COLS * CATEGORIES.length), max: 1, last: 0 });
+  const gridRef = useRef({ cells: new Float32Array(COLS * CATEGORIES.length), max: 1, min: 0, last: 0 });
 
   useChartRenderer(canvasRef, (ctx, { w, h }) => {
     const t0 = performance.now();
@@ -29,7 +29,8 @@ export const Heatmap = memo(function Heatmap() {
       g.cells.fill(0);
       const enabled = new Set(config.categories);
       const stride = Math.max(1, Math.ceil(n / 40_000));
-      let max = 1;
+      let max = -Infinity;
+      let min = Infinity;
       for (let i = 0; i < n; i += stride) {
         const p = store.at(store.len - n + i);
         const ci = store.cats[p];
@@ -39,20 +40,24 @@ export const Heatmap = memo(function Heatmap() {
         // accumulate mean-centered intensity
         g.cells[k] += store.values[p];
         if (g.cells[k] > max) max = g.cells[k];
+        if (g.cells[k] < min) min = g.cells[k];
       }
+      // Min-max stretch with gamma: uniform streams still show structure.
       g.max = max;
+      g.min = min === Infinity ? 0 : min;
     }
 
     const plotW = w - PAD.l - PAD.r;
     const plotH = h - PAD.t - PAD.b;
     const cw = plotW / COLS;
     const rh = plotH / CATEGORIES.length;
+    const spread = Math.max(1e-9, g.max - g.min);
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < CATEGORIES.length; r++) {
-        const v = g.cells[c * CATEGORIES.length + r] / g.max;
-        const a = Math.min(1, v * 1.6);
+        const v = (g.cells[c * CATEGORIES.length + r] - g.min) / spread;
+        const a = Math.min(1, Math.max(0, v));
         ctx.fillStyle =
-          a <= 0.01 ? 'rgba(255,255,255,0.03)' : `rgba(211,255,83,${(0.08 + a * 0.85).toFixed(3)})`;
+          a <= 0.02 ? 'rgba(255,255,255,0.03)' : `rgba(211,255,83,${(0.08 + a * 0.85).toFixed(3)})`;
         const x = PAD.l + c * cw + 1;
         const y = PAD.t + r * rh + 1;
         ctx.fillRect(x, y, Math.max(1, cw - 2), Math.max(1, rh - 2));

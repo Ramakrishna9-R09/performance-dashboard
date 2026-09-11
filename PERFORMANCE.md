@@ -13,11 +13,17 @@
 
 ## Benchmarks
 
-### Data-layer throughput (measured with Node 24, `scripts/bench.mjs` pattern)
+### Data-layer throughput (measured on this machine, Node v24.16.0, production `lib/` code compiled as-is)
 
-- `bucketize` 100k points → 120 buckets: single O(N) pass, no per-point allocation.
-- `aggregateByTime` 100k points: single pass.
-- Run locally: paste `lib/aggregation.ts` workload into a scratch script — typical results are **< 15ms per 100k** on desktop, which is why heavy aggregates run at **2Hz in a worker**, never per frame.
+| Workload (100,000 points) | Median |
+|---|---|
+| `generateInitialDataset` (seeded, deterministic) | 21.52ms |
+| `bucketize` → 120 buckets (bar chart path) | **0.77ms** |
+| `bucketize` → 2048 buckets (pixel-LOD path) | 1.27ms |
+| `aggregateByTime` (1min windows) | 0.65ms |
+| Line-chart LOD scan → 800 pixel columns | **0.57ms** |
+
+Takeaway: the per-frame math over the full 100k window costs **~0.6ms — 4% of a 16.6ms frame**. That is why the rAF loop can redraw every frame while heavy aggregates still run at 2Hz in the worker, never on the hot path. Reproduce: compile `lib/*.ts` with `tsc` and time the functions above.
 
 ### In-app measurement (production build required)
 

@@ -217,7 +217,8 @@ select:focus, input:focus { border-color: rgba(211, 255, 83, 0.5); outline: none
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
 
 .chart-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.chart-wrap { position: relative; width: 100%; }
+.chart-wrap { position: relative; width: 100%; transition: opacity 0.25s var(--ease); }
+.chart-wrap.pending { opacity: 0.55; }
 .chart-wrap canvas {
   display: block;
   width: 100%;

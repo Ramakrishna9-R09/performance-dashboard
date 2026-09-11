@@ -7,6 +7,9 @@ function clampInt(raw: string | null, fallback: number, min: number, max: number
   return Math.min(max, Math.max(min, n));
 }
 
+/** Run at the edge: pure deterministic generation, no Node APIs needed. */
+export const runtime = 'edge';
+
 /**
  * GET /api/data?count=10000&seed=7
  * Server-side synthetic time-series generation. Used by the dashboard to

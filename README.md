@@ -20,7 +20,20 @@ npm run typecheck
 - **Time ranges:** 10k / 25k / 50k / 100k sliding windows + raw / 1min / 5min / 1hour aggregation.
 - **Virtualized table:** 100k rows → ~30 mounted DOM nodes, latest-first.
 - **Performance HUD:** FPS + history graph, frame time, chart render time, JS heap, points in view, stress-test mode.
-- **Route handler:** `GET /api/data?count=&seed=` re-seeds the dashboard from the server.
+- **Route handler (edge):** `GET /api/data?count=&seed=` re-seeds the dashboard from the server.
+- **Command palette + shortcuts:** `Ctrl/⌘ K` commands, `Space` pause, `1–4` chart switch, hover crosshair readout on the line chart.
+
+## Screenshots
+
+Capture from the production build (`npm run build && npm start`, 1440px viewport):
+
+| File | Capture |
+|---|---|
+| `docs/shot-overview.png` | Full `/dashboard` at 10k, line chart, HUD green |
+| `docs/shot-stress.png` | After **⚡ Stress 100k**, heatmap active, FPS holding |
+| `docs/shot-palette.png` | `Ctrl+K` palette open over the dashboard |
+
+> Live reference (always current): `https://performance-dashboard-beta-ruby.vercel.app/dashboard`
 
 ## Performance testing
 
@@ -28,7 +41,7 @@ npm run typecheck
 2. Open `/dashboard`, set range **100k**, press **⚡ Stress 100k**.
 3. Watch the HUD: FPS graph (dashed line = 60fps target), render ms, heap over 10+ minutes (should stay flat).
 4. Chrome DevTools → Performance: record 10s, confirm long tasks ≈ 0 and scripting/frame < 8ms.
-5. React DevTools Profiler: interact (pause, switch charts) — controlとしての再レンダー only; canvas loops bypass React.
+5. React DevTools Profiler: interact (pause, switch charts) — only control-level re-renders; canvas loops bypass React.
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for architecture, budgets, and scaling strategy.
 
@@ -43,5 +56,6 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for architecture, budgets, and scaling st
 - **Server Component** (`app/dashboard/page.tsx`) generates the deterministic 10k seed dataset — first paint has data, no fetch waterfall.
 - **Streaming** via `Suspense` + `loading.tsx`; `error.tsx` boundary for the dashboard subtree.
 - **Client island** (`components/dashboard/Dashboard.tsx`): only interactivity hydrates; server HTML is static shell + data props.
-- **Route handler** for data re-seeding (`app/api/data/route.ts`).
+- **Route handler** for data re-seeding (`app/api/data/route.ts`, edge runtime).
+- **Concurrent UI:** chart tabs and range switches ride `useTransition` — the old view stays interactive while the new one mounts.
 - No external chart/state libraries — client JS stays lean (see build output for bundle sizes).

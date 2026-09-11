@@ -36,6 +36,7 @@ Takeaway: the per-frame math over the full 100k window costs **~0.6ms — 4% of 
 - **State collocation:** the 100ms stream never touches React state — it writes a `SeriesStore` ring buffer held in a ref. UI state (paused, chart, range) changes only on user input.
 - **Context split:** `DataProvider` memoizes its context value; the monitor owns its 2Hz state so charts/controls never re-render from metrics.
 - **Stable loops:** `useChartRenderer` stores the draw closure in a ref — the rAF loop is created once, always calls the latest draw, no effect churn.
+- **Concurrent transitions:** chart-tab and range switches are wrapped in `useTransition` with a pending shimmer, so heavy re-mounts never block typing, scrolling, or the stream.
 - **Memoized subtrees:** `ChartCard`, charts, table, and panels are `React.memo`; domain updates (2Hz) re-render only the chart stage.
 - **Virtualization:** fixed 28px rows + overscan + rAF-gated scroll handler.
 - **No per-frame allocation:** reused `Float32Array` column buffers; stride sampling instead of `.filter/.map` chains.

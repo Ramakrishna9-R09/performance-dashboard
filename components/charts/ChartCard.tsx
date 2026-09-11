@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useTransition } from 'react';
 import type { Category, ChartType } from '@/lib/types';
 import { useDashboard } from '@/components/providers/DataProvider';
 import { useViewDomain } from '@/hooks/useViewDomain';
@@ -27,11 +27,16 @@ const BLURB: Record<ChartType, string> = {
 /**
  * Chart stage: owns the shared value domain + SVG axis overlay, renders the
  * active canvas chart. Memoized so 2Hz domain updates only re-render this
- * subtree — never the controls or table.
+ * subtree — never the controls or table. Tab switches ride a React
+ * transition so the old chart stays interactive while the new one mounts.
  */
 export const ChartCard = memo(function ChartCard() {
   const { store, config, setConfig } = useDashboard();
   const domain = useViewDomain(store, config.targetPoints, config.categories);
+  const [isPending, startTransition] = useTransition();
+  const switchChart = (key: ChartType) => {
+    startTransition(() => setConfig({ chart: key }));
+  };
 
   return (
     <section className="card" aria-label="Chart">
@@ -42,14 +47,14 @@ export const ChartCard = memo(function ChartCard() {
             role="tab"
             aria-selected={config.chart === t.key}
             className={`btn${config.chart === t.key ? ' on' : ''}`}
-            onClick={() => setConfig({ chart: t.key })}
+            onClick={() => switchChart(t.key)}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <p className="hint">{BLURB[config.chart]}</p>
-      <div className="chart-wrap" id="axis-host">
+      <p className="hint">{BLURB[config.chart]}{isPending ? ' · switching…' : ''}</p>
+      <div className={`chart-wrap${isPending ? ' pending' : ''}`} id="axis-host">
         {config.chart === 'line' && <LineChart domain={domain} />}
         {config.chart === 'bar' && <BarChart domain={domain} />}
         {config.chart === 'scatter' && <ScatterPlot domain={domain} />}
